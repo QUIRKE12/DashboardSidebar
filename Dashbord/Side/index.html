@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amakuru — Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    /* One confident brand color for actions & active state. Everything
+       else is neutral grey. Semantic colors mean status, nothing else. */
+    --brand:#1F7A6C;
+    --brand-soft:#E4F1EE;
+    --brand-dark:#175f54;
+    --ink:#16213E;
+    --muted:#667085;
+    --faint:#98A2B3;
+    --border:#E4E7EC;
+    --app:#F9FAFB;
+    --card:#FFFFFF;
+    --success:#067647; --success-soft:#ECFDF3;
+    --warning:#B54708; --warning-soft:#FFFAEB;
+    --danger:#B42318;  --danger-soft:#FEF3F2;
+    --info:#175CD3;    --info-soft:#EFF8FF;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--app);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Fraunces',serif; font-weight:700;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:'Inter',sans-serif; cursor:pointer;}
+  :focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+  svg{display:block;}
+
+  .layout{display:flex; min-height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:240px; flex-shrink:0;
+    background:#fff;
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    position:fixed; top:0; left:0; height:100vh;
+    z-index:40;
+    transition:transform .2s ease;
+  }
+  .sidebar .brand-row{
+    padding:22px 20px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .brand-mark{
+    width:34px; height:34px; border-radius:8px;
+    background:var(--brand); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif; font-weight:700; font-size:16px; font-style:italic;
+    flex-shrink:0;
+  }
+  .brand-title{font-weight:800; font-size:14px; letter-spacing:0.01em;}
+  .brand-sub{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;}
+
+  .sidebar-nav{flex:1; padding:14px 12px; overflow-y:auto;}
+  .nav-label{
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em;
+    color:var(--faint); padding:0 10px; margin:14px 0 8px;
+  }
+  .nav-label:first-child{margin-top:2px;}
+  .nav-item{
+    width:100%; display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border-radius:8px; margin-bottom:2px;
+    font-size:13.5px; font-weight:500; color:var(--muted);
+    background:none; border:none; text-align:left;
+  }
+  .nav-item:hover{background:var(--app); color:var(--ink);}
+  .nav-item.active{background:var(--brand-soft); color:var(--brand); font-weight:700;}
+  .nav-item svg{flex-shrink:0;}
+  .nav-item .grow{flex:1;}
+  .nav-item .count{
+    font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px;
+    background:var(--danger); color:#fff;
+  }
+
+  .sidebar-foot{padding:14px 12px; border-top:1px solid var(--border);}
+  .user-card{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border-radius:8px; background:var(--app);
+  }
+  .user-avatar{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--brand); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif; font-weight:700; font-size:12px; flex-shrink:0;
+  }
+  .user-name{font-size:12.5px; font-weight:700;}
+  .user-role{font-size:10.5px; color:var(--muted);}
+
+  .mobile-toggle{
+    display:none;
+    background:none; border:1px solid var(--border); border-radius:8px;
+    padding:7px; color:var(--ink);
+  }
+  .sidebar-overlay{display:none; position:fixed; inset:0; background:rgba(16,24,40,0.4); z-index:35;}
+  .sidebar-overlay.open{display:block;}
+
+  /* ---------- Main ---------- */
+  .main{margin-left:240px; flex:1; display:flex; flex-direction:column; min-height:100vh;}
+  .topbar{
+    background:#fff; border-bottom:1px solid var(--border);
+    padding:0 28px; height:60px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:20;
+  }
+  .topbar-left{display:flex; align-items:center; gap:12px;}
+  .page-title{font-size:17px; font-weight:800;}
+  .topbar-right{display:flex; align-items:center; gap:16px;}
+  .bell-wrap{position:relative; color:var(--muted); display:flex;}
+  .bell-dot{
+    position:absolute; top:-4px; right:-6px;
+    background:var(--danger); color:#fff; font-size:9px; font-weight:700;
+    width:15px; height:15px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .divider-v{width:1px; height:20px; background:var(--border);}
+  .topbar-date{font-size:12px; color:var(--muted);}
+
+  /* live strip */
+  .live-strip{
+    display:flex; align-items:center; gap:24px;
+    padding:10px 28px; background:#fff; border-bottom:1px solid var(--border);
+    overflow-x:auto;
+  }
+  .live-strip .label{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--faint); white-space:nowrap;}
+  .live-lang{display:flex; align-items:center; gap:8px; white-space:nowrap;}
+  .pulse{position:relative; width:8px; height:8px; flex-shrink:0;}
+  .pulse::before, .pulse::after{
+    content:''; position:absolute; inset:0; border-radius:50%; background:var(--success);
+  }
+  .pulse::before{animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite; opacity:0.6;}
+  @keyframes ping{75%,100%{transform:scale(2.2); opacity:0;}}
+  .live-lang .lname{font-size:12.5px; font-weight:700;}
+  .live-lang .lval{font-size:12px; color:var(--muted);}
+
+  main.content{padding:28px; flex:1;}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    border-radius:8px; font-size:13px; font-weight:700;
+    padding:9px 15px; border:1px solid transparent;
+  }
+  .btn-primary{background:var(--brand); color:#fff;}
+  .btn-primary:hover{background:var(--brand-dark);}
+  .btn-ghost{background:#fff; color:var(--ink); border-color:var(--border);}
+  .btn-ghost:hover{border-color:var(--brand); color:var(--brand);}
+  .btn-danger{background:var(--danger-soft); color:var(--danger);}
+  .btn-sm{padding:6px 11px; font-size:12px;}
+
+  /* ---------- Page header ---------- */
+  .page-header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:22px;}
+  .page-header h1{font-size:20px; font-weight:800; margin:0;}
+  .page-header .sub{font-size:12.5px; color:var(--muted); margin-top:3px;}
+  .page-header .actions{display:flex; gap:10px;}
+
+  /* ---------- KPI ---------- */
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px;}
+  .kpi{background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px;}
+  .kpi-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .kpi-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);}
+  .kpi-dot{width:8px; height:8px; border-radius:50%;}
+  .kpi-value{font-size:27px; font-weight:800; margin-bottom:6px;}
+  .kpi-delta{font-size:12px; font-weight:700; display:flex; align-items:center; gap:5px;}
+  .kpi-delta.up{color:var(--success);}
+  .kpi-delta.down{color:var(--danger);}
+
+  /* ---------- Panels ---------- */
+  .panel-row{display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px;}
+  .panel{background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border);}
+  .panel-head h2{font-size:14px; font-weight:800; margin:0;}
+  .panel-head .sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+  .panel-body{padding:16px 20px;}
+
+  .traffic-item{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .traffic-item:last-child{margin-bottom:0;}
+  .traffic-item .src{width:80px; font-size:12.5px; font-weight:700; flex-shrink:0;}
+  .traffic-item .track{flex:1; height:7px; border-radius:4px; background:var(--border); overflow:hidden;}
+  .traffic-item .fill{height:100%; border-radius:4px; background:var(--brand);}
+  .traffic-item .pct{width:38px; text-align:right; font-size:11.5px; color:var(--muted);}
+
+  /* ---------- Table ---------- */
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--faint); padding:11px 20px; border-bottom:1px solid var(--border); background:var(--app);
+  }
+  tbody td{padding:13px 20px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FBFBFC;}
+  .cell-title{font-weight:700;}
+  .cell-meta{font-size:11.5px; color:var(--muted);}
+
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;
+  }
+  .status-pill .dot{width:6px; height:6px; border-radius:50%;}
+  .status-published{background:var(--success-soft); color:var(--success);}
+  .status-draft{background:var(--border); color:var(--muted);}
+  .status-scheduled{background:var(--warning-soft); color:var(--warning);}
+  .status-active{background:var(--success-soft); color:var(--success);}
+  .status-invited{background:var(--warning-soft); color:var(--warning);}
+
+  .row-actions{display:flex; gap:8px;}
+  .role-select{
+    border:1px solid var(--border); border-radius:6px; padding:6px 10px;
+    font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; color:var(--ink); background:var(--app);
+  }
+  .role-select:focus{border-color:var(--brand);}
+
+  /* ---------- Roles reference ---------- */
+  .role-row{display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid var(--border);}
+  .role-row:last-child{border-bottom:none;}
+  .role-name{font-weight:700; font-size:13px;}
+  .role-desc{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  /* ---------- Notification composer ---------- */
+  .composer{display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:20px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; font-weight:700; margin-bottom:6px;}
+  .field input[type=text], .field textarea, .field select{
+    width:100%; border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; font-family:'Inter',sans-serif; font-size:13.5px; background:var(--app); color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:70px;}
+  .chip-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{
+    border:1px solid var(--border); background:var(--app); border-radius:20px;
+    padding:6px 14px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px;
+  }
+  .chip input{accent-color:var(--brand);}
+  .lang-toggle{display:flex; gap:6px;}
+  .lang-toggle .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .delivery-preview{
+    background:var(--app); border:1px dashed var(--border); border-radius:8px; padding:16px; font-size:12.5px; color:var(--muted);
+  }
+  .delivery-preview strong{display:block; font-size:13.5px; color:var(--ink); margin-bottom:4px; font-family:'Inter',sans-serif;}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  @media (max-width:1080px){
+    .sidebar{transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);}
+    .main{margin-left:0;}
+    .mobile-toggle{display:inline-flex; align-items:center; justify-content:center;}
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    .panel-row{grid-template-columns:1fr;}
+    .composer{grid-template-columns:1fr;}
+  }
+  @media (max-width:520px){
+    .kpi-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-row">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-title">Amakuru</div>
+        <div class="brand-sub">Admin</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item active" data-view="dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span class="grow">Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
+        <span class="grow">Analytics</span>
+      </button>
+
+      <div class="nav-label">Content</div>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H4z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
+        <span class="grow">Articles</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-8-8"/><path d="M20 4l-8 8"/></svg>
+        <span class="grow">Categories &amp; Tags</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span class="grow">Media Library</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4A8.5 8.5 0 1 1 21 11.5z"/></svg>
+        <span class="grow">Comments</span>
+      </button>
+
+      <div class="nav-label">Engagement</div>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="grow">Notifications</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+        <span class="grow">Newsletters</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+        <span class="grow">Advertisements</span>
+      </button>
+
+      <div class="nav-label">System</div>
+      <button class="nav-item" data-view="users">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span class="grow">Users &amp; Roles</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6z"/></svg>
+        <span class="grow">Audit Log</span>
+      </button>
+      <button class="nav-item" data-view="disabled">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="grow">Settings</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <div class="user-avatar">AN</div>
+        <div>
+          <div class="user-name">Alice N.</div>
+          <div class="user-role">Editor-in-chief</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-toggle" id="mobileToggle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="page-title" id="pageTitle">Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="bell-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="bell-dot">3</span>
+        </div>
+        <div class="divider-v"></div>
+        <span class="topbar-date mono">Tue, 14 Jul 2026</span>
+      </div>
+    </div>
+
+    <div class="live-strip">
+      <span class="label">Language mix</span>
+      <div class="live-lang"><span class="pulse"></span><span class="lname">English</span><span class="lval mono">54%</span></div>
+      <div class="live-lang"><span class="pulse"></span><span class="lname">French</span><span class="lval mono">31%</span></div>
+      <div class="live-lang"><span class="pulse"></span><span class="lname">Kirundi</span><span class="lval mono">15%</span></div>
+    </div>
+
+    <main class="content">
+
+      <div id="view-dashboard" class="view active">
+        <div class="page-header">
+          <div>
+            <h1>Good morning, Alice</h1>
+            <div class="sub">Here's how Amakuru is performing — Tuesday, 14 July 2026</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-ghost">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              Export report
+            </button>
+            <button class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              New article
+            </button>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-top"><span class="kpi-label">Total visitors · 24h</span><span class="kpi-dot" style="background:var(--brand)"></span></div>
+            <div class="kpi-value mono">48.2K</div>
+            <div class="kpi-delta up">▲ 8.4% vs yesterday</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top"><span class="kpi-label">Active users · now</span><span class="kpi-dot" style="background:var(--info)"></span></div>
+            <div class="kpi-value mono">1,306</div>
+            <div class="kpi-delta up">▲ 12.1% vs avg</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top"><span class="kpi-label">New users · 24h</span><span class="kpi-dot" style="background:var(--success)"></span></div>
+            <div class="kpi-value mono">892</div>
+            <div class="kpi-delta down">▼ 2.3% vs yesterday</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-top"><span class="kpi-label">Returning users · 24h</span><span class="kpi-dot" style="background:var(--warning)"></span></div>
+            <div class="kpi-value mono">61%</div>
+            <div class="kpi-delta up">▲ 3.0pt vs last week</div>
+          </div>
+        </div>
+
+        <div class="panel-row">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2>Traffic — last 7 days</h2><div class="sub">Page views</div></div>
+            </div>
+            <div class="panel-body">
+              <canvas id="trafficChart" height="150"></canvas>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Traffic sources</h2></div>
+            <div class="panel-body">
+              <div class="traffic-item"><span class="src">Direct</span><div class="track"><div class="fill" style="width:42%"></div></div><span class="pct mono">42%</span></div>
+              <div class="traffic-item"><span class="src">Social</span><div class="track"><div class="fill" style="width:27%; background:var(--warning)"></div></div><span class="pct mono">27%</span></div>
+              <div class="traffic-item"><span class="src">Search</span><div class="track"><div class="fill" style="width:21%"></div></div><span class="pct mono">21%</span></div>
+              <div class="traffic-item"><span class="src">Referral</span><div class="track"><div class="fill" style="width:10%; background:var(--warning)"></div></div><span class="pct mono">10%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head">
+            <div><h2>Recent articles</h2><div class="sub">Latest across all categories</div></div>
+            <button class="btn btn-ghost btn-sm">View all</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Article</th><th>Category</th><th>Status</th><th>Views</th><th>Comments</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-title">Parliament approves cross-border infrastructure fund</div><div class="cell-meta">Jean-Claude Nduwimana · 14 Jul 2026</div></td>
+                <td>Politics</td>
+                <td><span class="status-pill status-published"><span class="dot"></span>Published</span></td>
+                <td class="mono">12,403</td>
+                <td class="mono">86</td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">View</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Coffee cooperatives report strongest harvest since 2019</div><div class="cell-meta">Esperance Niyonkuru · 14 Jul 2026</div></td>
+                <td>Business</td>
+                <td><span class="status-pill status-published"><span class="dot"></span>Published</span></td>
+                <td class="mono">8,912</td>
+                <td class="mono">34</td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">View</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Drummers' festival draws record crowds to the capital</div><div class="cell-meta">Patrick Kabera · 13 Jul 2026</div></td>
+                <td>Culture</td>
+                <td><span class="status-pill status-scheduled"><span class="dot"></span>Scheduled</span></td>
+                <td class="mono">—</td>
+                <td class="mono">—</td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">Preview</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Rural clinics to receive solar power upgrades by year end</div><div class="cell-meta">Alice Nzeyimana · 12 Jul 2026</div></td>
+                <td>Health</td>
+                <td><span class="status-pill status-draft"><span class="dot"></span>Draft</span></td>
+                <td class="mono">—</td>
+                <td class="mono">—</td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-danger btn-sm">Delete</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Send notification</h2><div class="sub">Push to subscribed devices, in the languages you choose</div></div>
+          <div class="composer">
+            <div>
+              <div class="field"><label>Title</label><input type="text" placeholder="e.g. Breaking: election commission announcement"></div>
+              <div class="field"><label>Message</label><textarea placeholder="Short summary shown in the push notification"></textarea></div>
+              <div class="field">
+                <label>Audience</label>
+                <div class="chip-row">
+                  <label class="chip"><input type="checkbox" checked> All users</label>
+                  <label class="chip"><input type="checkbox"> Politics subscribers</label>
+                  <label class="chip"><input type="checkbox"> Business subscribers</label>
+                  <label class="chip"><input type="checkbox"> Breaking news only</label>
+                </div>
+              </div>
+              <div class="field">
+                <label>Languages to send</label>
+                <div class="lang-toggle">
+                  <span class="chip active">EN</span><span class="chip active">FR</span><span class="chip">KI</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Schedule</label>
+                <select><option>Send immediately</option><option>Schedule for later</option></select>
+              </div>
+              <button class="btn btn-primary" style="margin-top:4px;">Send notification</button>
+            </div>
+            <div>
+              <div class="field">
+                <label>Delivery preview</label>
+                <div class="delivery-preview">
+                  <strong>Amakuru</strong>
+                  Breaking: election commission announcement — Short summary shown in the push notification…
+                  <div class="mono" style="margin-top:10px; font-size:11px;">now · amakuru.rw</div>
+                </div>
+              </div>
+              <div class="field">
+                <label>Estimated reach</label>
+                <div class="delivery-preview"><strong class="mono">~41,800 devices</strong>Based on selected audience and current opt-in rates across EN/FR.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /view-dashboard -->
+
+      <div id="view-users" class="view">
+        <div class="page-header">
+          <div><h1>Users &amp; Roles</h1><div class="sub">Manage team members and access control</div></div>
+          <div class="actions"><button class="btn btn-primary" id="inviteBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Invite user</button></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head"><h2>Roles</h2></div>
+          <div>
+            <div class="role-row"><div><div class="role-name">Admin</div><div class="role-desc">Full access — users, roles, settings, publishing, moderation</div></div></div>
+            <div class="role-row"><div><div class="role-name">Editor</div><div class="role-desc">Publish, edit, and schedule any article; manage comments</div></div></div>
+            <div class="role-row"><div><div class="role-name">Author</div><div class="role-desc">Write and edit own articles; submit for review</div></div></div>
+            <div class="role-row"><div><div class="role-name">Moderator</div><div class="role-desc">Approve, hide, and delete comments</div></div></div>
+            <div class="role-row"><div><div class="role-name">Subscriber</div><div class="role-desc">Read, comment, bookmark, manage own profile</div></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Team &amp; users</h2></div>
+          <table>
+            <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody id="userRows">
+              <tr>
+                <td><div class="cell-title">Alice Nzeyimana</div><div class="cell-meta">Joined 03 Feb 2025</div></td>
+                <td class="mono" style="font-size:12.5px;">alice@amakuru.rw</td>
+                <td><select class="role-select"><option selected>Admin</option><option>Editor</option><option>Author</option><option>Moderator</option><option>Subscriber</option></select></td>
+                <td><span class="status-pill status-active"><span class="dot"></span>Active</span></td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Deactivate</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Jean-Claude Nduwimana</div><div class="cell-meta">Joined 11 Jun 2025</div></td>
+                <td class="mono" style="font-size:12.5px;">jc@amakuru.rw</td>
+                <td><select class="role-select"><option>Admin</option><option selected>Editor</option><option>Author</option><option>Moderator</option><option>Subscriber</option></select></td>
+                <td><span class="status-pill status-active"><span class="dot"></span>Active</span></td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Deactivate</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Patrick Kabera</div><div class="cell-meta">Joined 22 Sep 2025</div></td>
+                <td class="mono" style="font-size:12.5px;">patrick@amakuru.rw</td>
+                <td><select class="role-select"><option>Admin</option><option>Editor</option><option selected>Author</option><option>Moderator</option><option>Subscriber</option></select></td>
+                <td><span class="status-pill status-active"><span class="dot"></span>Active</span></td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Deactivate</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title">Esperance Niyonkuru</div><div class="cell-meta">Joined 05 Jan 2026</div></td>
+                <td class="mono" style="font-size:12.5px;">esperance@amakuru.rw</td>
+                <td><select class="role-select"><option>Admin</option><option>Editor</option><option>Author</option><option selected>Moderator</option><option>Subscriber</option></select></td>
+                <td><span class="status-pill status-invited"><span class="dot"></span>Invited</span></td>
+                <td class="row-actions"><button class="btn btn-ghost btn-sm">Resend invite</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div><!-- /view-users -->
+
+    </main>
+  </div>
+</div>
+
+<script>
+  /* Sidebar mobile toggle */
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const mobileToggle = document.getElementById('mobileToggle');
+  function openSidebar(){ sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+  mobileToggle.addEventListener('click', openSidebar);
+  overlay.addEventListener('click', closeSidebar);
+
+  /* View switching */
+  const pageTitle = document.getElementById('pageTitle');
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const target = item.getAttribute('data-view');
+      if (target === 'disabled') { closeSidebar(); return; }
+      navItems.forEach(i => i.classList.toggle('active', i === item));
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + target));
+      pageTitle.textContent = target === 'users' ? 'Users & Roles' : 'Dashboard';
+      closeSidebar();
+    });
+  });
+
+  /* Invite user */
+  document.getElementById('inviteBtn').addEventListener('click', () => {
+    const email = prompt('Invite by email:');
+    if (!email) return;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><div class="cell-title">New teammate</div><div class="cell-meta">Invited just now</div></td>
+      <td class="mono" style="font-size:12.5px;">${email}</td>
+      <td><select class="role-select"><option>Admin</option><option>Editor</option><option>Author</option><option>Moderator</option><option selected>Subscriber</option></select></td>
+      <td><span class="status-pill status-invited"><span class="dot"></span>Invited</span></td>
+      <td class="row-actions"><button class="btn btn-ghost btn-sm">Resend invite</button></td>`;
+    document.getElementById('userRows').appendChild(row);
+  });
+
+  /* Real traffic chart */
+  const ctx = document.getElementById('trafficChart');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      datasets: [{
+        data: [28000, 34000, 31000, 39000, 45000, 48200, 37000],
+        backgroundColor: ['#1F7A6C','#1F7A6C','#1F7A6C','#1F7A6C','#1F7A6C','#B54708','#1F7A6C'],
+        borderRadius: 4,
+        maxBarThickness: 34,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#16213E', padding: 10, cornerRadius: 6, titleFont: {family:'Inter'}, bodyFont: {family:'IBM Plex Mono'}
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Mono', size: 11 }, color: '#667085' } },
+        y: { grid: { color: '#E4E7EC' }, ticks: { font: { family: 'IBM Plex Mono', size: 10 }, color: '#98A2B3',
+          callback: (v) => (v/1000) + 'K' } }
+      }
+    }
+  });
+</script>
+</body>
+</html>
